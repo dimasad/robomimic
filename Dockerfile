@@ -30,20 +30,27 @@ RUN curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_6
     conda clean -afy
 
 # Create and activate robomimic conda environment with Python 3.9
-RUN /opt/conda/bin/conda create -n robomimic_venv python=3.9 -y
+RUN /opt/conda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    /opt/conda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
+    /opt/conda/bin/conda create -n robomimic_venv python=3.9 pip -y
+
+# Upgrade pip, setuptools, and wheel, and install compatible numpy and mujoco versions
+RUN /opt/conda/bin/conda run -n robomimic_venv pip install --upgrade pip setuptools wheel && \
+    /opt/conda/bin/conda run -n robomimic_venv pip install "numpy<2.0.0" "mujoco<3.4.0"
 
 # Install PyTorch and torchvision with CPU fallback
 RUN /opt/conda/bin/conda run -n robomimic_venv conda install -y pytorch==2.0.0 torchvision==0.15.0 cpuonly -c pytorch || \
     /opt/conda/bin/conda run -n robomimic_venv pip install torch==2.0.0+cpu torchvision==0.15.0+cpu
 
 # Install robomimic from source
+COPY . /opt/robomimic
 WORKDIR /opt
-RUN git clone https://github.com/ARISE-Initiative/robomimic.git && \
-    /opt/conda/bin/conda run -n robomimic_venv pip install -e ./robomimic
+RUN /opt/conda/bin/conda run -n robomimic_venv pip install -e ./robomimic
 
 # Install robosuite
 RUN git clone https://github.com/ARISE-Initiative/robosuite.git && \
     cd robosuite && \
+    git checkout v1.5.1 && \
     /opt/conda/bin/conda run -n robomimic_venv pip install -r requirements.txt
 
 # Optional: Install robomimic documentation dependencies
